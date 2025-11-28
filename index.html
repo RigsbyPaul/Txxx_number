@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>T-Number PDF Generator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        /* General Styles for Modern Look and Responsiveness */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+            background-color: #f4f7f6;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 450px;
+            margin: 0 auto;
+            padding: 25px;
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #1a73e8; /* Google Blue */
+            text-align: center;
+            margin-bottom: 25px;
+            font-size: 1.8em;
+        }
+
+        /* Form Grouping and Inputs */
+        .input-group, .option-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        /* T-Number Input Styling */
+        .number-input-container {
+            display: flex;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .prefix {
+            background-color: #e9ecef;
+            padding: 10px 15px;
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #555;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #numberInput {
+            flex-grow: 1;
+            padding: 10px;
+            font-size: 1.1em;
+            border: none;
+            outline: none;
+        }
+        
+        /* Radio Button Styling (Orientation) */
+        .radio-buttons {
+            display: flex;
+            gap: 15px;
+        }
+        .radio-buttons label {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: normal;
+        }
+        .radio-buttons input[type="radio"] {
+            display: none;
+        }
+        .radio-buttons input[type="radio"]:checked + label {
+            background-color: #1a73e8;
+            color: white;
+            border-color: #1a73e8;
+        }
+
+        /* Select and Button Styling */
+        #fillSelect {
+            width: 100%;
+            padding: 10px;
+            font-size: 1em;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            appearance: none; /* Hide default dropdown arrow */
+            background-color: white;
+            background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23000000%22%20d%3D%22M287%2069.4L146.2%20205.9%205.4%2069.4h281.2z%22%2F%3E%3C%2Fsvg%3E');
+            background-repeat: no-repeat;
+            background-position: right 10px top 50%;
+            background-size: 0.65em auto;
+        }
+
+        #generateButton {
+            background-color: #34a853; /* Google Green */
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            font-size: 1.1em;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+            transition: background-color 0.2s;
+            margin-top: 10px;
+        }
+
+        #generateButton:hover {
+            background-color: #2c8e47;
+        }
+
+        /* Error Message */
+        #error-message {
+            color: #ea4335; /* Google Red */
+            font-weight: bold;
+            text-align: center;
+            margin-top: 15px;
+            display: none; /* Hidden by default */
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>📄 T-Number PDF Generator</h1>
+    <form id="pdfForm">
+        
+        <div class="option-group">
+            <label for="numberInput">Enter a Number (1-999):</label>
+            <div class="number-input-container">
+                <span class="prefix">T</span>
+                <input type="number" id="numberInput" min="1" max="999" step="1" required>
+            </div>
+        </div>
+
+        <div class="option-group">
+            <label>Page Orientation:</label>
+            <div class="radio-buttons">
+                <input type="radio" id="orientationHorizontal" name="orientation" value="horizontal" checked>
+                <label for="orientationHorizontal">Horizontal</label>
+                
+                <input type="radio" id="orientationVertical" name="orientation" value="vertical">
+                <label for="orientationVertical">Vertical</label>
+            </div>
+        </div>
+
+        <div class="option-group">
+            <label for="fillSelect">Text Fill Size:</label>
+            <select id="fillSelect">
+                <option value="90">100% (Actual 90% Fill)</option>
+                <option value="75">75% Fill</option>
+                <option value="50">50% Fill</option>
+            </select>
+        </div>
+
+        <button type="submit" id="generateButton">Generate PDF</button>
+    </form>
+    <p id="error-message">❌ Please enter a valid number between 1 and 999.</p>
+</div>
+
+<script>
+    // Use the window.jsPDF object provided by the CDN script
+    const { jsPDF } = window.jspdf;
+
+    document.getElementById('pdfForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const numberInput = document.getElementById('numberInput');
+        const number = parseInt(numberInput.value, 10);
+        const orientation = document.querySelector('input[name="orientation"]:checked').value;
+        const fillPercent = parseInt(document.getElementById('fillSelect').value, 10);
+        const fullText = 'T' + number;
+        const errorMessage = document.getElementById('error-message');
+
+        // 1. Input Validation
+        if (isNaN(number) || number < 1 || number > 999) {
+            errorMessage.style.display = 'block';
+            numberInput.focus();
+            return;
+        }
+        errorMessage.style.display = 'none';
+
+        // 2. Setup jsPDF (A4 in mm)
+        // 'l' for Landscape (Horizontal), 'p' for Portrait (Vertical)
+        const orientationCode = orientation === 'horizontal' ? 'l' : 'p';
+        const doc = new jsPDF({
+            orientation: orientationCode,
+            unit: 'mm',
+            format: 'a4'
+        });
+
+        const pageW = doc.internal.pageSize.getWidth();
+        const pageH = doc.internal.pageSize.getHeight();
+        
+        // 3. Set Font and Initial State
+        doc.setFont('helvetica', 'bold');
+
+        // 4. Calculate Optimal Font Size
+        // Target width is the page width multiplied by the selected fill percentage
+        const targetWidth = pageW * (fillPercent / 100); 
+        
+        // Estimate a very large starting font size
+        let fontSize = 1000; 
+
+        // Iteratively measure text width and scale the font size
+        doc.setFontSize(fontSize);
+        // Get the width the text *would* be at the current font size (in mm)
+        let textWidth = doc.getStringUnitWidth(fullText) * fontSize / doc.internal.scaleFactor;
+
+        // Calculate the required font size: (Target Width / Measured Width) * Current Font Size
+        fontSize = (targetWidth / textWidth) * fontSize;
+        doc.setFontSize(fontSize);
+
+        // 5. Place Text on Page
+        // Center the text horizontally and vertically
+        const textX = pageW / 2;
+        const textY = pageH / 2;
+
+        doc.text(fullText, textX, textY, { 
+            align: 'center', 
+            baseline: 'middle' 
+        });
+
+        // 6. Save/Download PDF
+        doc.save(`T${number}_${orientation}_${fillPercent}pct.pdf`);
+    });
+</script>
+
+</body>
+</html>
